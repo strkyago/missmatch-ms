@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MissMatch — GoPro & Drone Sync</title>
+  <meta name="description" content="MissMatch aligns drone footage to your GoPro timeline automatically. Select a session, set sync markers, and render aligned video tracks." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+            <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+          </svg>
+        </div>
+        <span class="logo-text">Miss<span class="logo-accent">Match</span></span>
+      </div>
+      <div class="header-badge" id="base-dir-badge">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span id="base-dir-label">Loading…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- Step 1: Session picker -->
+    <section class="card" id="section-session">
+      <div class="card-header">
+        <div class="step-badge">01</div>
+        <div>
+          <h2 class="card-title">Select Session</h2>
+          <p class="card-subtitle">Choose a recording session to sync</p>
+        </div>
+      </div>
+
+      <div id="sessions-grid" class="sessions-grid">
+        <div class="skeleton-grid">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Session overview + sync form -->
+    <section class="card hidden" id="section-sync">
+      <div class="card-header">
+        <div class="step-badge">02</div>
+        <div>
+          <h2 class="card-title">Configure Sync Points</h2>
+          <p class="card-subtitle" id="sync-subtitle">Enter the timestamp of the sync marker in each clip</p>
+        </div>
+        <button class="btn-ghost" id="btn-back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <!-- GoPro info strip -->
+      <div class="info-strip" id="gopro-strip">
+        <div class="info-item">
+          <div class="info-icon gopro-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+          </div>
+          <span class="info-label">GoPro</span>
+          <span class="info-value" id="gopro-filename">–</span>
+        </div>
+        <div class="info-divider"></div>
+        <div class="info-item">
+          <div class="info-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span class="info-label">Duration</span>
+          <span class="info-value mono" id="gopro-duration">–</span>
+        </div>
+        <div class="info-divider"></div>
+        <div class="info-item">
+          <div class="info-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          </div>
+          <span class="info-label">Drone flights</span>
+          <span class="info-value" id="drone-count">–</span>
+        </div>
+      </div>
+
+      <!-- Sync inputs per flight -->
+      <div id="sync-flights" class="sync-flights"></div>
+
+      <!-- Height option -->
+      <div class="options-row">
+        <label class="option-label" for="output-height">Output height</label>
+        <div class="select-wrap">
+          <select id="output-height" class="select">
+            <option value="720">720p</option>
+            <option value="1080" selected>1080p</option>
+            <option value="1440">1440p</option>
+            <option value="2160">4K (2160p)</option>
+          </select>
+          <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary" id="btn-sync">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start Sync & Render
+        </button>
+        <span class="hint-text">Sync points are saved automatically</span>
+      </div>
+    </section>
+
+    <!-- Step 3: Progress -->
+    <section class="card hidden" id="section-progress">
+      <div class="card-header">
+        <div class="step-badge active">03</div>
+        <div>
+          <h2 class="card-title">Rendering</h2>
+          <p class="card-subtitle" id="progress-subtitle">Processing your footage…</p>
+        </div>
+      </div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <div class="log-box" id="log-box"></div>
+
+      <!-- Output download cards (hidden until done) -->
+      <div class="outputs hidden" id="outputs-section">
+        <h3 class="outputs-title">Ready to download</h3>
+        <div class="outputs-grid">
+          <a class="output-card" id="dl-gopro" href="#" download>
+            <div class="output-icon gopro-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+            </div>
+            <div class="output-info">
+              <div class="output-name">gopro.mp4</div>
+              <div class="output-desc">Original GoPro recording</div>
+            </div>
+            <div class="output-dl">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+          <a class="output-card" id="dl-drone" href="#" download>
+            <div class="output-icon drone-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <div class="output-info">
+              <div class="output-name">drone.mp4</div>
+              <div class="output-desc">Aligned drone footage</div>
+            </div>
+            <div class="output-dl">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+          </a>
+        </div>
+        <button class="btn-ghost mt-4" id="btn-new-session">Start another session</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
