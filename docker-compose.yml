@@ -1,0 +1,39 @@
+services:
+  missmatch-ms:
+    build: .
+    container_name: missmatch-ms
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    volumes:
+      - /docker/gustav/uploads:/app/uploads:ro
+      - ./sessions:/app/sessions
+      # Persist job outputs so downstream MSes can download after container restart
+      - ./jobs:/tmp/missmatch-ms
+    environment:
+      PROCESSOR_SECRET: "${PROCESSOR_SECRET:?Set PROCESSOR_SECRET in .env}"
+      MISSMATCH_MS_URL: "${MISSMATCH_MS_URL:-http://missmatch-ms:8003}"
+      UPLOAD_DIR: "/app/uploads"
+      GANDALF_URL: "${GANDALF_URL:-https://pass.strikeapp.io}"
+      GANDALF_JWT_SECRET: "${GANDALF_JWT_SECRET:?Set GANDALF_JWT_SECRET in .env}"
+      SECURE_COOKIES: "true"
+      SESSION_TTL_DAYS: "30"
+    networks:
+      - traefik-web
+      - strike-services
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-web"
+      - "traefik.http.routers.missmatch-http.rule=Host(`missmatch.strikeapp.io`)"
+      - "traefik.http.routers.missmatch-http.entrypoints=web"
+      - "traefik.http.routers.missmatch-http.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.missmatch.rule=Host(`missmatch.strikeapp.io`)"
+      - "traefik.http.routers.missmatch.entrypoints=websecure"
+      - "traefik.http.routers.missmatch.tls.certresolver=letsencrypt"
+      - "traefik.http.services.missmatch.loadbalancer.server.port=8003"
+
+networks:
+  traefik-web:
+    external: true
+  strike-services:
+    external: true
