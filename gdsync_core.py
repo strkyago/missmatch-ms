@@ -325,3 +325,62 @@ def build_aligned_drone(
         concat_video_only(segments, drone_out)
 
     return gopro_out, drone_out
+
+
+def concat_videos(clips: list[Path], dst: Path, *, log: Callable[[str], None] = print) -> Path:
+    """Concatenate video files (video + audio) via the concat demuxer — no re-encode."""
+    require_binaries()
+    if len(clips) == 1:
+        shutil.copy2(clips[0], dst)
+        return dst
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    listfile = dst.with_suffix(".list.txt")
+    listfile.write_text("".join(f"file '{c.resolve()}'\n" for c in clips))
+    log(f"Concatenating {len(clips)} chapter(s) → {dst.name}…")
+    run([
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0",
+        "-i", str(listfile),
+        "-c", "copy",
+        str(dst),
+    ])
+    try:
+        listfile.unlink()
+    except OSError:
+        pass
+    log(f"Concatenation done → {dst.name}")
+    return dst
+
+
+def build_splitscreen(
+    gopro: Path,
+    drone: Path,
+    dst: Path,
+    *,
+    height: int = 720,
+    log: Callable[[str], None] = print,
+) -> Path:
+    """Produce a side-by-side composite: GoPro (left) + aligned drone (right), GoPro audio."""
+    require_binaries()
+    width, height = _target_wh(height)
+    half_w = width // 2
+    log(f"Building split-screen ({width}×{height})…")
+    run([
+        "ffmpeg", "-y",
+        "-i", str(gopro),
+        "-i", str(drone),
+        "-filter_complex",
+        (
+            f"[0:v]{_scale_pad_filter(half_w, height)}[left];"
+            f"[1:v]{_scale_pad_filter(half_w, height)}[right];"
+            "[left][right]hstack=inputs=2"
+        ),
+        "-map", "0:a?",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        "-c:a", "aac", "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        str(dst),
+    ])
+    log(f"Split-screen saved → {dst.name}")
+    return dst
